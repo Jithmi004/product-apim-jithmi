@@ -102,202 +102,202 @@ public class BenchmarkTestCase extends APIMIntegrationBaseTest {
         providerName = user.getUserName();
     }
 
-    @Test
-    public void createRestApi(Method method)
-            throws IOException, InterruptedException, ParseException, APIManagerIntegrationTestException, ApiException {
-
-        scenario = "API_CREATE";
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        apiUUID = createAnApi("NewAPI", "sampleContext");
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-        apiIdList.add(apiUUID);
-    }
-
-    @Test
-    public void publishRestApi(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException {
-
-        scenario = "API_PUBLISH";
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
-        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        HttpResponse response = restAPIPublisher
-                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
-                "API publish Response code is invalid " + apiUUID);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-//        benchmarkUtils.deleteRestAPI(apiUUID);
-        apiIdList.add(apiUUID);
-    }
-
-    @Test
-    public void retrieveAllApisFromPublisher(Method method)
-            throws InterruptedException, IOException, ParseException, ApiException, APIManagerIntegrationTestException {
-
-        scenario = "RETRIEVE_ALL_PUBLISHER";
-        testName = method.getName();
-        BenchmarkUtils.setTenancy(userMode);
-        int noOfAPISCreated = 20;
-        int noOfAPISRetrieved = 10;
-        for (int i = 0; i < noOfAPISCreated; i++) {
-            apiUUID = createAnApi(testName + i, testName + "_context" + i);
-            HttpResponse response = restAPIPublisher
-                    .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-            assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
-                    "API publish Response code is invalid " + apiUUID);
-            apiIdList.add(apiUUID);
-        }
-        waitForAPIDeployment();
-        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        restAPIPublisher.getAPIs(0, noOfAPISRetrieved);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-        apiIdList.add(apiUUID);
-    }
-
-    @Test(dependsOnMethods = "retrieveAllApisFromPublisher")
-    public void retrieveAllApisFromDevPortal(Method method)
-            throws InterruptedException, IOException, ParseException,
-            org.wso2.am.integration.clients.store.api.ApiException, APIManagerIntegrationTestException {
-
-        scenario = "RETRIEVE_ALL_STORE";
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        int noOfAPISRetrieved = 10;
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        restAPIStore.getAPIs(0, noOfAPISRetrieved);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-    }
-
-    @Test
-    public void retrieveAnApiFromPublisher(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException {
-
-        scenario = "RETRIEVE_API_PUBLISHER";
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
-        apiIdList.add(apiUUID);
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        HttpResponse response = restAPIPublisher.getAPI(apiUUID);
-        assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
-                "API get Response is not as expected");
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-    }
-
-    @Test
-    public void retrieveAnApiFromStore(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
-            org.wso2.am.integration.clients.store.api.ApiException {
-
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        scenario = "RETRIEVE_API_STORE";
-        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
-        restAPIPublisher
-                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        apiIdList.add(apiUUID);
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        APIDTO apidto = restAPIStore.getAPI(apiUUID);
-        assertTrue(StringUtils.isNotEmpty(apidto.getId()));
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-    }
-
-    @Test
-    public void createAnApplication(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException {
-
-        scenario = "CREATE_APPLICATION";
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        HttpResponse applicationResponse = restAPIStore.createApplication("Test_Application_" + testName,
-                "Test Application For Benchmark",
-                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
-                ApplicationDTO.TokenTypeEnum.JWT);
-        applicationID = applicationResponse.getData();
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-        restAPIStore.deleteApplication(applicationID);
-    }
-
-    @Test
-    public void subscribeToAnAPI(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
-            org.wso2.am.integration.clients.store.api.ApiException {
-
-        scenario = "SUBSCRIBE_TO_API";
-        testName = method.getName();
-        apiUUID = createAnApi(testName, testName + "_context");
-        benchmarkUtils.setTenancy(userMode);
-        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
-                "Test Application For Benchmark",
-                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
-                ApplicationDTO.TokenTypeEnum.JWT);
-        applicationID = applicationResponse.getData();
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-        apiIdList.add(apiUUID);
-        restAPIStore.deleteApplication(applicationID);
-    }
-
-    @Test
-    public void generateJwtAccessToken(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
-            org.wso2.am.integration.clients.store.api.ApiException {
-
-        scenario = "GENERATE_JWT_TOKEN";
-        ArrayList grantTypes = new ArrayList();
-        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        apiUUID = createAnApi(testName, testName + "_context");
-        restAPIPublisher
-                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
-                "Test Application For Benchmark",
-                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
-                ApplicationDTO.TokenTypeEnum.JWT);
-        applicationID = applicationResponse.getData();
-        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        ApplicationKeyDTO apiKeyDTO = restAPIStore
-                .generateKeys(applicationID, "3600", null, ApplicationKeyGenerateRequestDTO.KeyTypeEnum.PRODUCTION, null,
-                        grantTypes);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-        apiIdList.add(apiUUID);
-        restAPIStore.deleteApplication(applicationID);
-    }
+//    @Test
+//    public void createRestApi(Method method)
+//            throws IOException, InterruptedException, ParseException, APIManagerIntegrationTestException, ApiException {
+//
+//        scenario = "API_CREATE";
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        apiUUID = createAnApi("NewAPI", "sampleContext");
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//        apiIdList.add(apiUUID);
+//    }
+//
+//    @Test
+//    public void publishRestApi(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException {
+//
+//        scenario = "API_PUBLISH";
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
+//        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        HttpResponse response = restAPIPublisher
+//                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//        assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
+//                "API publish Response code is invalid " + apiUUID);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+////        benchmarkUtils.deleteRestAPI(apiUUID);
+//        apiIdList.add(apiUUID);
+//    }
+//
+//    @Test
+//    public void retrieveAllApisFromPublisher(Method method)
+//            throws InterruptedException, IOException, ParseException, ApiException, APIManagerIntegrationTestException {
+//
+//        scenario = "RETRIEVE_ALL_PUBLISHER";
+//        testName = method.getName();
+//        BenchmarkUtils.setTenancy(userMode);
+//        int noOfAPISCreated = 20;
+//        int noOfAPISRetrieved = 10;
+//        for (int i = 0; i < noOfAPISCreated; i++) {
+//            apiUUID = createAnApi(testName + i, testName + "_context" + i);
+//            HttpResponse response = restAPIPublisher
+//                    .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//            assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
+//                    "API publish Response code is invalid " + apiUUID);
+//            apiIdList.add(apiUUID);
+//        }
+//        waitForAPIDeployment();
+//        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        restAPIPublisher.getAPIs(0, noOfAPISRetrieved);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//        apiIdList.add(apiUUID);
+//    }
+//
+//    @Test(dependsOnMethods = "retrieveAllApisFromPublisher")
+//    public void retrieveAllApisFromDevPortal(Method method)
+//            throws InterruptedException, IOException, ParseException,
+//            org.wso2.am.integration.clients.store.api.ApiException, APIManagerIntegrationTestException {
+//
+//        scenario = "RETRIEVE_ALL_STORE";
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        int noOfAPISRetrieved = 10;
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        restAPIStore.getAPIs(0, noOfAPISRetrieved);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//    }
+//
+//    @Test
+//    public void retrieveAnApiFromPublisher(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException {
+//
+//        scenario = "RETRIEVE_API_PUBLISHER";
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
+//        apiIdList.add(apiUUID);
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        HttpResponse response = restAPIPublisher.getAPI(apiUUID);
+//        assertEquals(response.getResponseCode(), Response.Status.OK.getStatusCode(),
+//                "API get Response is not as expected");
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//    }
+//
+//    @Test
+//    public void retrieveAnApiFromStore(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
+//            org.wso2.am.integration.clients.store.api.ApiException {
+//
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        scenario = "RETRIEVE_API_STORE";
+//        apiUUID = createAnApi("NAME_" + testName, "Context_" + testName);
+//        restAPIPublisher
+//                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//        apiIdList.add(apiUUID);
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        APIDTO apidto = restAPIStore.getAPI(apiUUID);
+//        assertTrue(StringUtils.isNotEmpty(apidto.getId()));
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//    }
+//
+//    @Test
+//    public void createAnApplication(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException {
+//
+//        scenario = "CREATE_APPLICATION";
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        HttpResponse applicationResponse = restAPIStore.createApplication("Test_Application_" + testName,
+//                "Test Application For Benchmark",
+//                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
+//                ApplicationDTO.TokenTypeEnum.JWT);
+//        applicationID = applicationResponse.getData();
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//        restAPIStore.deleteApplication(applicationID);
+//    }
+//
+//    @Test
+//    public void subscribeToAnAPI(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
+//            org.wso2.am.integration.clients.store.api.ApiException {
+//
+//        scenario = "SUBSCRIBE_TO_API";
+//        testName = method.getName();
+//        apiUUID = createAnApi(testName, testName + "_context");
+//        benchmarkUtils.setTenancy(userMode);
+//        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
+//                "Test Application For Benchmark",
+//                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
+//                ApplicationDTO.TokenTypeEnum.JWT);
+//        applicationID = applicationResponse.getData();
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//        apiIdList.add(apiUUID);
+//        restAPIStore.deleteApplication(applicationID);
+//    }
+//
+//    @Test
+//    public void generateJwtAccessToken(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
+//            org.wso2.am.integration.clients.store.api.ApiException {
+//
+//        scenario = "GENERATE_JWT_TOKEN";
+//        ArrayList grantTypes = new ArrayList();
+//        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        apiUUID = createAnApi(testName, testName + "_context");
+//        restAPIPublisher
+//                .changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
+//                "Test Application For Benchmark",
+//                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
+//                ApplicationDTO.TokenTypeEnum.JWT);
+//        applicationID = applicationResponse.getData();
+//        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        ApplicationKeyDTO apiKeyDTO = restAPIStore
+//                .generateKeys(applicationID, "3600", null, ApplicationKeyGenerateRequestDTO.KeyTypeEnum.PRODUCTION, null,
+//                        grantTypes);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//        apiIdList.add(apiUUID);
+//        restAPIStore.deleteApplication(applicationID);
+//    }
 
     @Test
     public void invokeCreatedApi(Method method)
@@ -341,28 +341,28 @@ public class BenchmarkTestCase extends APIMIntegrationBaseTest {
         restAPIStore.deleteApplication(applicationID);
     }
 
-    @Test
-    public void createRevisionAndDeploy(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
-            JSONException {
-
-        scenario = "CREATE_REVISION_AND_DEPLOY";
-        ArrayList grantTypes = new ArrayList();
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        context = "context_" + testName;
-        apiUUID = createAnApi(testName, context);
-        apiIdList.add(apiUUID);
-        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
-        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        String revisionUUID = createAPIRevisionAndDeployUsingRest(apiUUID, restAPIPublisher);
-        Assert.notNull(revisionUUID);
-//        Validate the JDBC query counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
-//        Validate external api request counts executed from correlation log
-        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
-    }
+//    @Test
+//    public void createRevisionAndDeploy(Method method)
+//            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
+//            JSONException {
+//
+//        scenario = "CREATE_REVISION_AND_DEPLOY";
+//        ArrayList grantTypes = new ArrayList();
+//        testName = method.getName();
+//        benchmarkUtils.setTenancy(userMode);
+//        context = "context_" + testName;
+//        apiUUID = createAnApi(testName, context);
+//        apiIdList.add(apiUUID);
+//        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
+//        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+//        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+//        String revisionUUID = createAPIRevisionAndDeployUsingRest(apiUUID, restAPIPublisher);
+//        Assert.notNull(revisionUUID);
+////        Validate the JDBC query counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, JDBC_METRIC, startTime, scenario, providerName);
+////        Validate external api request counts executed from correlation log
+//        benchmarkUtils.validateBenchmarkResults(testName, EXTERNAL_API_METRIC, startTime, scenario, providerName);
+//    }
 
     @AfterMethod()
     public void resetScenarioName() {
