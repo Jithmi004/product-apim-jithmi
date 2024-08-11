@@ -1,5 +1,6 @@
 package org.wso2.am.integration.tests.scenariotest;
 
+import com.sun.net.httpserver.HttpServer;
 import org.apache.commons.ssl.SSLServer;
 import org.compass.core.util.Assert;
 import org.json.JSONException;
@@ -25,8 +26,10 @@ import org.wso2.carbon.automation.engine.annotations.SetEnvironment;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
 import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse;
+import org.wso2.am.integration.backend.service.SimpleHTTPServer;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -130,7 +133,8 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         System.out.println("Before server start");
         String serverKeyStoreLocation = findServerKeyStoreLocation();
 
-        SSLServerSendImmediateResponse server = StartServer(new SSLServerSendImmediateResponse(), Content2KB, 8100, serverKeyStoreLocation);
+        //SSLServerSendImmediateResponse server = StartServer(new SSLServerSendImmediateResponse(), Content2KB, 8100, serverKeyStoreLocation);
+        StartHTTPServer();
         System.out.println("After server start");
         ArrayList grantTypes = new ArrayList();
         Map<String, String> requestHeaders;
@@ -195,6 +199,28 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         // Giving grace period to start the server
         Thread.sleep(500);
         return server;
+    }
+    public void StartHTTPServer() throws InterruptedException {
+        // Create a new thread to run the server
+        Thread serverThread = new Thread(() -> {
+            try {
+                // Initialize the server to listen on port 8100
+                HttpServer server = HttpServer.create(new InetSocketAddress(8100), 0);
+                server.createContext("/", new SimpleHTTPServer.MyHandler());
+                server.setExecutor(null); // creates a default executor
+                server.start();
+                System.out.println("Server is listening on port 8100...");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        // Start the server thread
+        serverThread.start();
+        Thread.sleep(500);
+
+        // Main thread can continue executing other tasks
+        System.out.println("Main thread is free to do other things...");
     }
     public String readThisFile(String fileLocation) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(fileLocation));
