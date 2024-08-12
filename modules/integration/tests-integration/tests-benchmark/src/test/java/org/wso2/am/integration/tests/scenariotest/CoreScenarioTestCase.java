@@ -1,6 +1,7 @@
 package org.wso2.am.integration.tests.scenariotest;
 
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsServer;
 import org.apache.commons.ssl.SSLServer;
 import org.compass.core.util.Assert;
 import org.json.JSONException;
@@ -27,6 +28,7 @@ import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
 import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse;
 import org.wso2.am.integration.backend.service.SimpleHTTPServer;
+import org.wso2.am.integration.backend.service.SimpleHTTPSServer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -35,17 +37,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import javax.ws.rs.core.Response;
 import javax.xml.xpath.XPathExpressionException;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.KeyStore;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 import static org.testng.Assert.assertEquals;
 
@@ -131,10 +138,12 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
 
         scenario = "INVOKE_API";
         System.out.println("Before server start");
-        String serverKeyStoreLocation = findServerKeyStoreLocation();
-
+        String loc = findServerKeyStoreLocation();
+        System.out.println("==========\nKEYSTORE LOCATION: "+loc+"\n==========");
         //SSLServerSendImmediateResponse server = StartServer(new SSLServerSendImmediateResponse(), Content2KB, 8100, serverKeyStoreLocation);
-        StartHTTPServer();
+        //StartHTTPServer();
+       // StartJAVASSLServer("/Users/jithmir/Work/API_Manager/IntegrationTestingPack/wso2am-4.3.0/repository/resources/security/wso2carbon.jks");
+        StartJAVASSLServer(loc);
         System.out.println("After server start");
         ArrayList grantTypes = new ArrayList();
         Map<String, String> requestHeaders;
@@ -162,7 +171,7 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         requestHeaders.put("Authorization", "Bearer " + accessToken);
         requestHeaders.put("activityID", System.getProperty("testName"));
         HttpResponse invokeResponse =
-                HTTPSClientUtils.doGet("http://localhost:8100/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
+                HTTPSClientUtils.doGet("https://localhost:8100/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
         assertEquals(invokeResponse.getResponseCode(),
                 200, "Response code mismatched");
         restAPIStore.deleteApplication(applicationID);
@@ -172,7 +181,7 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
             throws APIManagerIntegrationTestException, ApiException, MalformedURLException {
         //Create the api creation request object
         APIRequest apiRequest;
-        apiRequest = new APIRequest(apiName, context, new URL("http://localhost:8100/"));
+        apiRequest = new APIRequest(apiName, context, new URL("https://localhost:8100/"));
         apiRequest.setVersion(API_VERSION_1_0_0);
         apiRequest.setTiersCollection(APIMIntegrationConstants.API_TIER.UNLIMITED);
         apiRequest.setTier(APIMIntegrationConstants.API_TIER.UNLIMITED);
@@ -222,6 +231,51 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         // Main thread can continue executing other tasks
         System.out.println("Main thread is free to do other things...");
     }
+    public void StartJAVASSLServer(String keyStorePath) throws InterruptedException {
+        // The path to the keystore file and the keystore password (provided by you)
+        String keystorePath = keyStorePath;  // <-- Replace with your actual keystore path
+        String keystorePassword = "wso2carbon";    // <-- Replace with your actual keystore password
+
+        // Create a new thread to run the server
+        Thread serverThread = new Thread(() -> {
+            try {
+                // Initialize the SSL context with the keystore
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+
+                KeyStore keyStore = KeyStore.getInstance("JKS");
+                FileInputStream fis = new FileInputStream(keystorePath);
+                keyStore.load(fis, keystorePassword.toCharArray());
+
+                KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+                kmf.init(keyStore, keystorePassword.toCharArray());
+
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+                tmf.init(keyStore);
+
+                sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+                // Create an HttpsServer instance
+                HttpsServer server = HttpsServer.create(new InetSocketAddress(8100), 0);
+                server.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext));
+
+                server.createContext("/", new SimpleHTTPSServer.MyHandler());
+                server.setExecutor(Executors.newCachedThreadPool()); // Use a cached thread pool for handling requests
+                server.start();
+
+                System.out.println("SSL Server is listening on port 8100...");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        // Start the server thread
+        serverThread.start();
+        Thread.sleep(500);
+
+        // Main thread can continue executing other tasks
+        System.out.println("Main thread is free to do other things...");
+    }
+
     public String readThisFile(String fileLocation) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(fileLocation));
         try {
@@ -242,7 +296,7 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
     public String findServerKeyStoreLocation(){
         File directory = new File("/Users/jithmir/Work/Product_APIM_fork_2/product-apim/modules/integration/tests-integration/tests-benchmark/target");
         String prefix = "carbon";
-        String serverKeyStoreLocation = "";
+        String location = "";
 
         if (directory.isDirectory()) {
             File[] files = directory.listFiles();
@@ -252,7 +306,8 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
                     // Check if the file is a directory and starts with the prefix
                     if (file.isDirectory() && file.getName().startsWith(prefix)) {
                         System.out.println(file.getAbsolutePath());
-                        serverKeyStoreLocation = file.getAbsolutePath();
+                        location = file.getAbsolutePath();
+                        break;
                     }
                 }
             } else {
@@ -261,7 +316,7 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         } else {
             System.out.println("The provided path is not a directory.");
         }
-        serverKeyStoreLocation += "/wso2am-4.4.0-SNAPSHOT/repository/resources/security/wso2carbon.jks";
-        return serverKeyStoreLocation;
+        location += "/wso2am-4.4.0-SNAPSHOT/repository/resources/security/wso2carbon.jks";
+        return location;
     }
 }
