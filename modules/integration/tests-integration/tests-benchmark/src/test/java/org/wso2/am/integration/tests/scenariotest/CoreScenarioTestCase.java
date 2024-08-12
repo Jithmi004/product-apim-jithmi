@@ -170,8 +170,12 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         requestHeaders = new HashMap<String, String>();
         requestHeaders.put("Authorization", "Bearer " + accessToken);
         requestHeaders.put("activityID", System.getProperty("testName"));
+//        HttpResponse invokeResponse =
+//                HTTPSClientUtils.doGet("https://localhost:8100/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
+//        assertEquals(invokeResponse.getResponseCode(),
+//                200, "Response code mismatched");
         HttpResponse invokeResponse =
-                HTTPSClientUtils.doGet("https://localhost:8100/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
+                HTTPSClientUtils.doGet(getAPIInvocationURLHttps(context, API_VERSION_1_0_0) + "", requestHeaders);
         assertEquals(invokeResponse.getResponseCode(),
                 200, "Response code mismatched");
         restAPIStore.deleteApplication(applicationID);
