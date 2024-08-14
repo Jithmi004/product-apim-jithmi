@@ -1,27 +1,24 @@
 package org.wso2.am.integration.tests.scenariotest;
 
-
 import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
 
-public class SSLClientUtil {
-    public static int port = 1;//ScenarioTests.serverPort;
-    public static String keyStoreLocation = "";//ScenarioTests.ClientKeyStorePath;
-    public static String keyStorePassword = "";//ScenarioTests.ClientKeyStorePassword;
-
+public class SimpleNonBlockingClient extends AbstractSSLClient{
     private static String Bearer;
     private final String host;
+    private final int port;
     //String context = "/bny/1.0";
-    String context = "";//ScenarioTests.Context;
+    String context = "/context_httpScenarioTest/1.0.0";
 
-    public SSLClientUtil(String host, int port, String Bearer) {
+    public SimpleNonBlockingClient(String host, int port, String Bearer) {
         this.Bearer = Bearer;
         this.host = host;
         this.port = port;
     }
 
-    public SSLClientUtil(String host, int port, String context, String Bearer) {
+    public SimpleNonBlockingClient(String host, int port, String context, String Bearer, String location) {
+        this.keyStoreLocation = location;
         this.Bearer = Bearer;
         this.host = host;
         this.port = port;
@@ -57,7 +54,8 @@ public class SSLClientUtil {
                     PrintStream printWriter = new PrintStream(outputStream);
 
                     // Write header data
-                    printWriter.print(method + " " + context + " HTTP/1.1\r\n");
+                    //printWriter.print(method + " " + context + " HTTP/1.1\r\n");
+                    printWriter.print(RequestMethod.GET + " " + context + " HTTP/1.1\r\n");
                     printWriter.print("Accept: application/json\r\n");
                     printWriter.print("Connection: keep-alive\r\n");
                     printWriter.print("Authorization: Bearer " + Bearer + "\r\n");
@@ -66,6 +64,8 @@ public class SSLClientUtil {
                         System.out.println("Actual Content-Length: is: " + contentLength + " but " + method + " method so not sending Content-Length header");
                         printWriter.print("\r\n");
                         printWriter.flush();
+                        //added to avoid socket closed error
+                        responseReader.waitForResponse();
                         sslSocket.close();
                         return;
                     }
@@ -117,34 +117,6 @@ public class SSLClientUtil {
                 Thread.sleep(10);
             }
         }
-    }
-
-    protected SSLContext createSSLContext() {
-
-        try {
-            KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(new FileInputStream(keyStoreLocation), keyStorePassword.toCharArray());
-
-            // Create key manager
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
-            keyManagerFactory.init(keyStore, "wso2carbon".toCharArray());
-            KeyManager[] km = keyManagerFactory.getKeyManagers();
-
-            // Create trust manager
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
-            trustManagerFactory.init(keyStore);
-            TrustManager[] tm = trustManagerFactory.getTrustManagers();
-
-            // Initialize SSLContext
-            SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
-            sslContext.init(km, tm, null);
-
-            return sslContext;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        return null;
     }
 }
 

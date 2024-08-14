@@ -10,7 +10,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
-import org.wso2.am.integration.backend.service.AbstractSSLServer;
+import org.wso2.am.integration.backend.service.*;
 import org.wso2.am.integration.clients.publisher.api.ApiException;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationKeyDTO;
@@ -26,9 +26,6 @@ import org.wso2.carbon.automation.engine.annotations.ExecutionEnvironment;
 import org.wso2.carbon.automation.engine.annotations.SetEnvironment;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
-import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse;
-import org.wso2.am.integration.backend.service.SimpleHTTPServer;
-import org.wso2.am.integration.backend.service.SimpleHTTPSServer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -117,68 +114,19 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         providerName = user.getUserName();
     }
 
-    //create an publish an api
-//    @Test
-//    public void createRestApi(Method method)
-//            throws IOException, InterruptedException, ParseException, APIManagerIntegrationTestException, ApiException {
-//
-//        scenario = "API_CREATE";
-//        testName = method.getName();
-//        benchmarkUtils.setTenancy(userMode);
-//        LocalTime startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-//        apiUUID = createAnApi("NewAPI2", "sampleContext");
-//        HttpResponse response = restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-//        apiIdList.add(apiUUID);
-//    }
-
     @Test
-    public void invokeCreatedApi(Method method)
-            throws InterruptedException, IOException, ParseException, APIManagerIntegrationTestException, ApiException,
-            org.wso2.am.integration.clients.store.api.ApiException, XPathExpressionException, JSONException {
+    public void httpScenarioTest(Method method)
+            throws Exception {
 
         scenario = "INVOKE_API";
-        System.out.println("Before server start");
+        //find the keystore location and start the backend SSL server
         String loc = findServerKeyStoreLocation();
         System.out.println("==========\nKEYSTORE LOCATION: "+loc+"\n==========");
-        //SSLServerSendImmediateResponse server = StartServer(new SSLServerSendImmediateResponse(), Content2KB, 8100, serverKeyStoreLocation);
-        //StartHTTPServer();
-       // StartJAVASSLServer("/Users/jithmir/Work/API_Manager/IntegrationTestingPack/wso2am-4.3.0/repository/resources/security/wso2carbon.jks");
-        StartJAVASSLServer(loc);
-        System.out.println("After server start");
-        ArrayList grantTypes = new ArrayList();
-        Map<String, String> requestHeaders;
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        context = "context_" + testName;
-        apiUUID = createAnApi(testName, context);
-        apiIdList.add(apiUUID);
-        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
-        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
-        createAPIRevisionAndDeployUsingRest(apiUUID, restAPIPublisher);
-        waitForAPIDeployment();
-        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
-                "Test Application For Benchmark",
-                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
-                ApplicationDTO.TokenTypeEnum.JWT);
-        applicationID = applicationResponse.getData();
-        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
-        ApplicationKeyDTO apiKeyDTO = restAPIStore
-                .generateKeys(applicationID, "3600", null, ApplicationKeyGenerateRequestDTO.KeyTypeEnum.PRODUCTION, null,
-                        grantTypes);
-        String accessToken = apiKeyDTO.getToken().getAccessToken();
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
-        requestHeaders = new HashMap<String, String>();
-        requestHeaders.put("Authorization", "Bearer " + accessToken);
-        requestHeaders.put("activityID", System.getProperty("testName"));
-//        HttpResponse invokeResponse =
-//                HTTPSClientUtils.doGet("https://localhost:8100/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
-//        assertEquals(invokeResponse.getResponseCode(),
-//                200, "Response code mismatched");
-        HttpResponse invokeResponse =
-                HTTPSClientUtils.doGet(getAPIInvocationURLHttps(context, API_VERSION_1_0_0) + "", requestHeaders);
-        assertEquals(invokeResponse.getResponseCode(),
-                200, "Response code mismatched");
-        restAPIStore.deleteApplication(applicationID);
+
+        SSLServerSendImmediateResponse200 server = new SSLServerSendImmediateResponse200();
+        server.run(8100,Content2KB,loc);
+//        StartServer(server,Content2KB,8100,loc);
+
     }
 
     public String createAnApi(String apiName, String context)
@@ -199,85 +147,16 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         return apiUUID;
     }
 
-    public SSLServerSendImmediateResponse StartServer(SSLServerSendImmediateResponse server, String responseContent, int port, String location) throws InterruptedException {
-        Thread thread = new Thread(() -> {
+    public void startBackendServer(SimpleHTTPSServer server) throws InterruptedException {
+        Thread serverThread = new Thread(() -> {
             try {
-                System.out.println(" >>>>> Start " + server.getClass().getSimpleName() + " backend with response content length : "+ responseContent.getBytes().length);
-                server.run(port, responseContent, "200", location);
-            } catch (Exception e) {
+                server.run();
+            } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         });
-        thread.start();
-        // Giving grace period to start the server
-        Thread.sleep(500);
-        return server;
-    }
-    public void StartHTTPServer() throws InterruptedException {
-        // Create a new thread to run the server
-        Thread serverThread = new Thread(() -> {
-            try {
-                // Initialize the server to listen on port 8100
-                HttpServer server = HttpServer.create(new InetSocketAddress(8100), 0);
-                server.createContext("/", new SimpleHTTPServer.MyHandler());
-                server.setExecutor(null); // creates a default executor
-                server.start();
-                System.out.println("Server is listening on port 8100...");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-        // Start the server thread
         serverThread.start();
         Thread.sleep(500);
-
-        // Main thread can continue executing other tasks
-        System.out.println("Main thread is free to do other things...");
-    }
-    public void StartJAVASSLServer(String keyStorePath) throws InterruptedException {
-        // The path to the keystore file and the keystore password (provided by you)
-        String keystorePath = keyStorePath;  // <-- Replace with your actual keystore path
-        String keystorePassword = "wso2carbon";    // <-- Replace with your actual keystore password
-
-        // Create a new thread to run the server
-        Thread serverThread = new Thread(() -> {
-            try {
-                // Initialize the SSL context with the keystore
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-
-                KeyStore keyStore = KeyStore.getInstance("JKS");
-                FileInputStream fis = new FileInputStream(keystorePath);
-                keyStore.load(fis, keystorePassword.toCharArray());
-
-                KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-                kmf.init(keyStore, keystorePassword.toCharArray());
-
-                TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-                tmf.init(keyStore);
-
-                sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-
-                // Create an HttpsServer instance
-                HttpsServer server = HttpsServer.create(new InetSocketAddress(8100), 0);
-                server.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext));
-
-                server.createContext("/", new SimpleHTTPSServer.MyHandler());
-                server.setExecutor(Executors.newCachedThreadPool()); // Use a cached thread pool for handling requests
-                server.start();
-
-                System.out.println("SSL Server is listening on port 8100...");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-
-        // Start the server thread
-        serverThread.start();
-        Thread.sleep(500);
-
-        // Main thread can continue executing other tasks
-        System.out.println("Main thread is free to do other things...");
     }
 
     public String readThisFile(String fileLocation) throws IOException {
@@ -322,5 +201,24 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         }
         location += "/wso2am-4.4.0-SNAPSHOT/repository/resources/security/wso2carbon.jks";
         return location;
+    }
+
+    private static void StartClient(AbstractSSLClient client, String payload, RequestMethod method ) {
+        client.run(payload, method );
+    }
+
+    public static AbstractSSLServer StartServer(AbstractSSLServer server, String responseContent, int port, String location) throws InterruptedException {
+        Thread thread = new Thread(() -> {
+            try {
+                System.out.println(" >>>>> Start " + server.getClass().getSimpleName() + " backend with response content length : "+ responseContent.getBytes().length);
+                server.run(port, responseContent,location);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        thread.start();
+        // Giving grace period to start the server
+        Thread.sleep(500);
+        return server;
     }
 }

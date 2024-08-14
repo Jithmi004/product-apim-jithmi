@@ -7,9 +7,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-public class SSLServerSendImmediateResponse extends AbstractSSLServer{
+public class SSLServerSendImmediateResponse200 extends AbstractSSLServer {
 
-    public void run(int port, String content, String statusCode, String location) throws Exception {
+    public void run(int port, String content,String location) throws Exception {
         try {
             // Create a ServerSocket to listen on that port.
             System.setProperty("javax.net.ssl.keyStore",location);
@@ -26,7 +26,7 @@ public class SSLServerSendImmediateResponse extends AbstractSSLServer{
 
                 // Start sending our reply, using the HTTP 1.1 protocol
                 System.out.println(" Sending immediate response ( size:"+ content.getBytes().length +") without reading the request");
-                out.print("HTTP/1.1 " + statusCode + " OK\r\n"); // Version & status code
+                out.print("HTTP/1.1 200 OK\r\n"); // Version & status code
                 out.print("Access-Control-Expose-Headers:\r\n");
                 out.print("Access-Control-Allow-Origin: *\r\n");
                 out.print("X-Correlation-ID: 9f22c69b-6673-4326-8aff-0c0c097cd3c0\r\n");
@@ -49,3 +49,4 @@ public class SSLServerSendImmediateResponse extends AbstractSSLServer{
         }
     }
 }
+
