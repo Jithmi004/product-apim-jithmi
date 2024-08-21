@@ -10,7 +10,8 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
-import org.wso2.am.integration.backend.service.*;
+import org.wso2.am.integration.backend.service.AbstractSSLServer;
+import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse200;
 import org.wso2.am.integration.clients.publisher.api.ApiException;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationKeyDTO;
@@ -26,6 +27,7 @@ import org.wso2.carbon.automation.engine.annotations.ExecutionEnvironment;
 import org.wso2.carbon.automation.engine.annotations.SetEnvironment;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
+import org.wso2.am.integration.backend.service.SimpleHTTPSServer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -115,18 +117,48 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
     }
 
     @Test
-    public void httpScenarioTest(Method method)
+    public void invokeCreatedApi(Method method)
             throws Exception {
 
         scenario = "INVOKE_API";
-        //find the keystore location and start the backend SSL server
-        String loc = findServerKeyStoreLocation();
-        System.out.println("==========\nKEYSTORE LOCATION: "+loc+"\n==========");
+        AbstractSSLServer server = new SSLServerSendImmediateResponse200();
+        server.run(8100,"{sample: content}");
 
-        SSLServerSendImmediateResponse200 server = new SSLServerSendImmediateResponse200();
-        server.run(8100,Content2KB,loc);
-//        StartServer(server,Content2KB,8100,loc);
+        ArrayList grantTypes = new ArrayList();
+        Map<String, String> requestHeaders;
+        testName = method.getName();
+        benchmarkUtils.setTenancy(userMode);
+        context = "context_" + testName;
+        apiUUID = createAnApi(testName, context);
+        apiIdList.add(apiUUID);
+        grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
+        restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
+        createAPIRevisionAndDeployUsingRest(apiUUID, restAPIPublisher);
+        waitForAPIDeployment();
+        HttpResponse applicationResponse = restAPIStore.createApplication("Application_" + testName,
+                "Test Application For Benchmark",
+                APIMIntegrationConstants.APPLICATION_TIER.UNLIMITED,
+                ApplicationDTO.TokenTypeEnum.JWT);
+        applicationID = applicationResponse.getData();
+        restAPIStore.subscribeToAPI(apiUUID, applicationID, TIER_UNLIMITED);
+        ApplicationKeyDTO apiKeyDTO = restAPIStore
+                .generateKeys(applicationID, "3600", null, ApplicationKeyGenerateRequestDTO.KeyTypeEnum.PRODUCTION, null,
+                        grantTypes);
+        String accessToken = apiKeyDTO.getToken().getAccessToken();
+        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
+        requestHeaders = new HashMap<String, String>();
+        requestHeaders.put("Authorization", "Bearer " + accessToken);
+        requestHeaders.put("activityID", System.getProperty("testName"));
 
+        HttpResponse invokeResponse =
+                HTTPSClientUtils.doGet("https://localhost:8743/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
+        assertEquals(invokeResponse.getResponseCode(),
+                200, "Response code mismatched");
+//        HttpResponse invokeResponse =
+//                HTTPSClientUtils.doGet(getAPIInvocationURLHttps(context, API_VERSION_1_0_0) + "", requestHeaders);
+//        assertEquals(invokeResponse.getResponseCode(),
+//                200, "Response code mismatched");
+        restAPIStore.deleteApplication(applicationID);
     }
 
     public String createAnApi(String apiName, String context)
@@ -147,18 +179,6 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         return apiUUID;
     }
 
-    public void startBackendServer(SimpleHTTPSServer server) throws InterruptedException {
-        Thread serverThread = new Thread(() -> {
-            try {
-                server.run();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        serverThread.start();
-        Thread.sleep(500);
-    }
-
     public String readThisFile(String fileLocation) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(fileLocation));
         try {
@@ -176,49 +196,5 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
             br.close();
         }
     }
-    public String findServerKeyStoreLocation(){
-        File directory = new File("/Users/jithmir/Work/Product_APIM_fork_2/product-apim/modules/integration/tests-integration/tests-benchmark/target");
-        String prefix = "carbon";
-        String location = "";
 
-        if (directory.isDirectory()) {
-            File[] files = directory.listFiles();
-
-            if (files != null) {
-                for (File file : files) {
-                    // Check if the file is a directory and starts with the prefix
-                    if (file.isDirectory() && file.getName().startsWith(prefix)) {
-                        System.out.println(file.getAbsolutePath());
-                        location = file.getAbsolutePath();
-                        break;
-                    }
-                }
-            } else {
-                System.out.println("The directory is empty or an I/O error occurred.");
-            }
-        } else {
-            System.out.println("The provided path is not a directory.");
-        }
-        location += "/wso2am-4.4.0-SNAPSHOT/repository/resources/security/wso2carbon.jks";
-        return location;
-    }
-
-    private static void StartClient(AbstractSSLClient client, String payload, RequestMethod method ) {
-        client.run(payload, method );
-    }
-
-    public static AbstractSSLServer StartServer(AbstractSSLServer server, String responseContent, int port, String location) throws InterruptedException {
-        Thread thread = new Thread(() -> {
-            try {
-                System.out.println(" >>>>> Start " + server.getClass().getSimpleName() + " backend with response content length : "+ responseContent.getBytes().length);
-                server.run(port, responseContent,location);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-        thread.start();
-        // Giving grace period to start the server
-        Thread.sleep(500);
-        return server;
-    }
 }

@@ -1,52 +1,45 @@
 package org.wso2.am.integration.backend.service;
 
-import javax.net.ServerSocketFactory;
-import javax.net.ssl.SSLServerSocketFactory;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import com.sun.net.httpserver.HttpsServer;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.security.KeyStore;
+import java.util.concurrent.Executors;
 
 public class SSLServerSendImmediateResponse200 extends AbstractSSLServer {
 
-    public void run(int port, String content,String location) throws Exception {
+    public void run(int port, String content) throws InterruptedException {
+        // Create a new thread to run the server
         try {
-            // Create a ServerSocket to listen on that port.
-            System.setProperty("javax.net.ssl.keyStore",location);
-            System.setProperty("javax.net.ssl.keyStorePassword", "wso2carbon");
-            ServerSocketFactory ssf = SSLServerSocketFactory.getDefault();
-            ss = ssf.createServerSocket(port);
-            System.out.println("SSL Server Started!");
+            // Initialize the SSL context with the keystore
+            SSLContext sslContext = SSLContext.getInstance("TLS");
 
-            do {
-                Socket client = ss.accept();
-                System.out.println(" Accepting the client connection ...");
-                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                PrintWriter out = new PrintWriter(client.getOutputStream());
+            KeyStore keyStore = KeyStore.getInstance("JKS");
+            FileInputStream fis = new FileInputStream("/Users/jithmir/Work/Product_APIM_fork_2/product-apim/modules/integration/tests-integration/tests-benchmark/src/test/resources/keystores/products/wso2carbon.jks");
+            keyStore.load(fis, "wso2carbon".toCharArray());
 
-                // Start sending our reply, using the HTTP 1.1 protocol
-                System.out.println(" Sending immediate response ( size:"+ content.getBytes().length +") without reading the request");
-                out.print("HTTP/1.1 200 OK\r\n"); // Version & status code
-                out.print("Access-Control-Expose-Headers:\r\n");
-                out.print("Access-Control-Allow-Origin: *\r\n");
-                out.print("X-Correlation-ID: 9f22c69b-6673-4326-8aff-0c0c097cd3c0\r\n");
-                out.print(
-                        "Access-Control-Allow-Headers: authorization,Access-Control-Allow-Origin,Content-Type," +
-                                "SOAPAction,apikey,testKey,Authorization\r\n");
-                out.print("Content-Type: application/json\r\n");
-                out.print("Date: Tue, 14 Dec 2021 08:15:17 GMT\r\n");
-                out.print("Content-Length:  " + content.getBytes().length + "\r\n");
-                out.print("Connection: Close\r\n");
-                out.print("\r\n");
-                out.print(content + "\r\n");
-                out.flush();
-                System.out.println(" Closing server connection ....");
-                out.close();
-                client.close();
-            } while (true);
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+            kmf.init(keyStore, "wso2carbon".toCharArray());
+
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+            tmf.init(keyStore);
+
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+            // Create an HttpsServer instance
+            HttpsServer server = HttpsServer.create(new InetSocketAddress(8100), 0);
+            server.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext));
+
+            server.createContext("/", new Handler(200,content,false));
+            server.setExecutor(Executors.newSingleThreadExecutor());
+            server.start();
+
+            System.out.println("SSL Server is listening on port 8100...");
         } catch (Exception e) {
-            System.err.println("Error" + e);
+            e.printStackTrace();
         }
     }
 }
-

@@ -13,7 +13,7 @@ public class AbstractSSLServer {
 
     public boolean isserverdone = true;
 
-    public void run(int port, String content,String location) throws Exception {}
+    public void run(int port, String content) throws Exception {}
 
     public void shutdownServer() throws InterruptedException {
         try {
