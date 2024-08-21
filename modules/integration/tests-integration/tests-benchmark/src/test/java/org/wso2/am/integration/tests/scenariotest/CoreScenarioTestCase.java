@@ -13,6 +13,7 @@ import org.testng.annotations.Test;
 import org.wso2.am.integration.backend.service.AbstractSSLServer;
 import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse200;
 import org.wso2.am.integration.clients.publisher.api.ApiException;
+import org.wso2.am.integration.clients.publisher.api.v1.dto.APIOperationsDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationKeyDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationKeyGenerateRequestDTO;
@@ -129,6 +130,11 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         testName = method.getName();
         benchmarkUtils.setTenancy(userMode);
         context = "context_" + testName;
+
+
+
+
+
         apiUUID = createAnApi(testName, context);
         apiIdList.add(apiUUID);
         grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
@@ -170,6 +176,27 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         apiRequest.setTiersCollection(APIMIntegrationConstants.API_TIER.UNLIMITED);
         apiRequest.setTier(APIMIntegrationConstants.API_TIER.UNLIMITED);
         apiRequest.setProvider(providerName);
+
+        APIOperationsDTO apiOperationsDTO1 = new APIOperationsDTO();
+        apiOperationsDTO1.setVerb("GET");
+        apiOperationsDTO1.setTarget("/*");
+        apiOperationsDTO1.setAuthType("Application & Application User");
+        apiOperationsDTO1.setThrottlingPolicy("Unlimited");
+
+        APIOperationsDTO apiOperationsDTO2 = new APIOperationsDTO();
+        apiOperationsDTO2.setVerb("POST");
+        apiOperationsDTO2.setTarget("/*");
+        apiOperationsDTO2.setAuthType("Application & Application User");
+        apiOperationsDTO2.setThrottlingPolicy("Unlimited");
+
+
+        List<APIOperationsDTO> operationsDTOS = new ArrayList<>();
+        operationsDTOS.add(apiOperationsDTO1);
+        operationsDTOS.add(apiOperationsDTO2);
+        apiRequest.setOperationsDTOS(operationsDTOS);
+        apiRequest.setVisibility("public");
+
+
         //Add the API using the API publisher.
         HttpResponse apiResponse = restAPIPublisher.addAPI(apiRequest);
         apiUUID = apiResponse.getData();
