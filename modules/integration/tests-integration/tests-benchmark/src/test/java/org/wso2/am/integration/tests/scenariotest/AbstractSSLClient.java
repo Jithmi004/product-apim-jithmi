@@ -7,7 +7,7 @@ import java.security.KeyStore;
 public class AbstractSSLClient {
 
     public static int port = 8743;
-    public  String keyStoreLocation = "";
+    public  String keyStoreLocation = "/Users/jithmir/Work/Product_APIM_fork_2/product-apim/modules/integration/tests-integration/tests-benchmark/src/test/resources/keystores/products/wso2carbon.jks";
     public static String keyStorePassword = "wso2carbon";
     public void run(String payload, RequestMethod method){
 

@@ -9,7 +9,7 @@ public class SimpleNonBlockingClient extends AbstractSSLClient{
     private final String host;
     private final int port;
     //String context = "/bny/1.0";
-    String context = "/context_httpScenarioTest/1.0.0";
+    String context = "/test/1.0.0";
 
     public SimpleNonBlockingClient(String host, int port, String Bearer) {
         this.Bearer = Bearer;

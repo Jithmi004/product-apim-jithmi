@@ -1,17 +1,11 @@
 package org.wso2.am.integration.tests.scenariotest;
 
-import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpsServer;
-import org.apache.commons.ssl.SSLServer;
-import org.compass.core.util.Assert;
-import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 import org.wso2.am.integration.backend.service.AbstractSSLServer;
-import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse200;
+import org.wso2.am.integration.backend.service.SSLServerSendImmediateResponse;
 import org.wso2.am.integration.clients.publisher.api.ApiException;
 import org.wso2.am.integration.clients.publisher.api.v1.dto.APIOperationsDTO;
 import org.wso2.am.integration.clients.store.api.v1.dto.ApplicationDTO;
@@ -28,31 +22,19 @@ import org.wso2.carbon.automation.engine.annotations.ExecutionEnvironment;
 import org.wso2.carbon.automation.engine.annotations.SetEnvironment;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
-import org.wso2.am.integration.backend.service.SimpleHTTPSServer;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 import javax.ws.rs.core.Response;
-import javax.xml.xpath.XPathExpressionException;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.KeyStore;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 
 import static org.testng.Assert.assertEquals;
 
@@ -118,24 +100,16 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
     }
 
     @Test
-    public void invokeCreatedApi(Method method)
+    public void invokeCreatedApis(Method method)
             throws Exception {
 
         scenario = "INVOKE_API";
-        AbstractSSLServer server = new SSLServerSendImmediateResponse200();
-        server.run(8100,"{sample: content}");
+        AbstractSSLServer server = new SSLServerSendImmediateResponse();
 
         ArrayList grantTypes = new ArrayList();
         Map<String, String> requestHeaders;
-        testName = method.getName();
-        benchmarkUtils.setTenancy(userMode);
-        context = "context_" + testName;
 
-
-
-
-
-        apiUUID = createAnApi(testName, context);
+        apiUUID = createAnApi("TestAPI", "test");
         apiIdList.add(apiUUID);
         grantTypes.add(APIMIntegrationConstants.GRANT_TYPE.CLIENT_CREDENTIAL);
         restAPIPublisher.changeAPILifeCycleStatus(apiUUID, APILifeCycleAction.PUBLISH.getAction(), null);
@@ -151,19 +125,29 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
                 .generateKeys(applicationID, "3600", null, ApplicationKeyGenerateRequestDTO.KeyTypeEnum.PRODUCTION, null,
                         grantTypes);
         String accessToken = apiKeyDTO.getToken().getAccessToken();
-        startTime = benchmarkUtils.getCurrentTimeStampAndSetCorrelationID(testName);
         requestHeaders = new HashMap<String, String>();
         requestHeaders.put("Authorization", "Bearer " + accessToken);
         requestHeaders.put("activityID", System.getProperty("testName"));
 
-        HttpResponse invokeResponse =
-                HTTPSClientUtils.doGet("https://localhost:8743/context_invokeCreatedApi/1.0.0" + "", requestHeaders);
-        assertEquals(invokeResponse.getResponseCode(),
-                200, "Response code mismatched");
-//        HttpResponse invokeResponse =
-//                HTTPSClientUtils.doGet(getAPIInvocationURLHttps(context, API_VERSION_1_0_0) + "", requestHeaders);
-//        assertEquals(invokeResponse.getResponseCode(),
-//                200, "Response code mismatched");
+
+
+        //Tests
+        server.run(8100,Content2KB, 200);
+        SimpleNonBlockingClient client = new SimpleNonBlockingClient("localhost",8743,accessToken);
+        client.run(Content2KB,RequestMethod.POST);
+
+        HttpResponse invokeResponse200 = HTTPSClientUtils.doPost("https://localhost:8100/test/1.0.0" + "", requestHeaders,Content2KB);
+        assertEquals(invokeResponse200.getResponseCode(), 200, "Response code mismatched");
+        System.out.println(invokeResponse200);
+//        server.stop();
+//
+//        server.run(8100,Content2KB, 300);
+//        HttpResponse invokeResponse300 = HTTPSClientUtils.doPost("https://localhost:8743/test/1.0.0" + "", requestHeaders,Content2KB);
+//        assertEquals(invokeResponse300.getResponseCode(), 300, "Response code mismatched");
+//        server.stop();
+
+
+
         restAPIStore.deleteApplication(applicationID);
     }
 

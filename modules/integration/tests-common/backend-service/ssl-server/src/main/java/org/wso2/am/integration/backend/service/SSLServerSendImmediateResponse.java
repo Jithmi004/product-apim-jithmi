@@ -9,9 +9,9 @@ import java.net.InetSocketAddress;
 import java.security.KeyStore;
 import java.util.concurrent.Executors;
 
-public class SSLServerSendImmediateResponse200 extends AbstractSSLServer {
+public class SSLServerSendImmediateResponse extends AbstractSSLServer {
 
-    public void run(int port, String content) throws InterruptedException {
+    public void run(int port, String content, int statusCode) throws InterruptedException {
         // Create a new thread to run the server
         try {
             // Initialize the SSL context with the keystore
@@ -31,9 +31,10 @@ public class SSLServerSendImmediateResponse200 extends AbstractSSLServer {
 
             // Create an HttpsServer instance
             HttpsServer server = HttpsServer.create(new InetSocketAddress(8100), 0);
+            this.setServer(server);
             server.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext));
 
-            server.createContext("/", new Handler(200,content,false));
+            server.createContext("/", new Handler(statusCode,content,true));
             server.setExecutor(Executors.newSingleThreadExecutor());
             server.start();
 

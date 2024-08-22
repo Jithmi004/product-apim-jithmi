@@ -3,6 +3,8 @@ package org.wso2.am.integration.backend.service;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -19,6 +21,8 @@ public class Handler implements HttpHandler {
     }
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        // Prepare the JSON response
+        String contents = readFile("/Users/jithmir/Work/IntegrationTests/HTTPCoreScenarioTests/src/main/resources/2KB.json");
         // Set the response headers (matching the ones from the SSL socket server)
         exchange.getResponseHeaders().set("Access-Control-Expose-Headers", "");
         exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
@@ -29,16 +33,30 @@ public class Handler implements HttpHandler {
         exchange.getResponseHeaders().set("Date", "Tue, 14 Dec 2021 08:15:17 GMT");
         exchange.getResponseHeaders().set("Connection", "Close");
 
-        // Send response headers with status code and the length of the JSON response
-        if(sendContent){
-            exchange.sendResponseHeaders(statusCode, content.getBytes().length);
-        }
-        exchange.sendResponseHeaders(statusCode, 0);
+        // Send response headers with status code 200 and the length of the JSON response
+        exchange.sendResponseHeaders(200, contents.getBytes().length);
+
         // Write the JSON response to the output stream
         OutputStream os = exchange.getResponseBody();
-        if(sendContent){
-            os.write(content.getBytes());
-        }
+        os.write(contents.getBytes());
         os.close();
+    }
+
+    public static String readFile(String fileLocation) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(fileLocation));
+        try {
+            StringBuilder sb = new StringBuilder();
+            String line = br.readLine();
+
+            while (line != null) {
+                sb.append(line);
+                sb.append(System.lineSeparator());
+                line = br.readLine();
+            }
+            String everything = sb.toString();
+            return everything;
+        } finally {
+            br.close();
+        }
     }
 }
