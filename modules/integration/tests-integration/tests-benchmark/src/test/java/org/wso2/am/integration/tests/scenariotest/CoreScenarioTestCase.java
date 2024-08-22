@@ -132,19 +132,28 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
 
 
         //Tests
-        server.run(8100,Content2KB, 200);
-        SimpleNonBlockingClient client = new SimpleNonBlockingClient("localhost",8743,accessToken);
-        client.run(Content2KB,RequestMethod.POST);
+        SimpleNonBlockingClient client2kb = new SimpleNonBlockingClient("localhost",8743,accessToken);
+        SimpleNonBlockingClient client1mb = new SimpleNonBlockingClient("localhost",8743,accessToken);
 
-        HttpResponse invokeResponse200 = HTTPSClientUtils.doPost("https://localhost:8100/test/1.0.0" + "", requestHeaders,Content2KB);
-        assertEquals(invokeResponse200.getResponseCode(), 200, "Response code mismatched");
-        System.out.println(invokeResponse200);
-//        server.stop();
-//
-//        server.run(8100,Content2KB, 300);
-//        HttpResponse invokeResponse300 = HTTPSClientUtils.doPost("https://localhost:8743/test/1.0.0" + "", requestHeaders,Content2KB);
-//        assertEquals(invokeResponse300.getResponseCode(), 300, "Response code mismatched");
-//        server.stop();
+        server.run(8100,Content2KB, 200);
+        client2kb.run(Content2KB,RequestMethod.POST);
+        client1mb.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 300);
+        client2kb.run(Content2KB,RequestMethod.POST);
+        client1mb.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 400);
+        client2kb.run(Content2KB,RequestMethod.POST);
+        client1mb.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 503);
+        client2kb.run(Content2KB,RequestMethod.POST);
+        client1mb.run(Content1MB,RequestMethod.POST);
+        server.stop();
 
 
 
