@@ -134,7 +134,10 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         //Tests
         SimpleNonBlockingClient client2kb = new SimpleNonBlockingClient("localhost",8743,accessToken);
         SimpleNonBlockingClient client1mb = new SimpleNonBlockingClient("localhost",8743,accessToken);
+        NonBlockingClientSendLessContent client2kbLessContent = new NonBlockingClientSendLessContent("localhost",8743,accessToken);
+        NonBlockingClientSendLessContent client1mbLessContent = new NonBlockingClientSendLessContent("localhost",8743,accessToken);
 
+        //Client send the full request content
         server.run(8100,Content2KB, 200);
         client2kb.run(Content2KB,RequestMethod.POST);
         client1mb.run(Content1MB,RequestMethod.POST);
@@ -155,7 +158,51 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         client1mb.run(Content1MB,RequestMethod.POST);
         server.stop();
 
+        //Client sends less content than mentioned in the content-length header and server sends immediate response without payload
 
+        server.run(8100,"", 200);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,"", 300);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,"", 400);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,"", 503);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        //Client sends less content than mentioned in the content-length header
+
+        server.run(8100,Content2KB, 200);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 300);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 400);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        server.run(8100,Content2KB, 503);
+        client2kbLessContent.run(Content2KB,RequestMethod.POST);
+        client1mbLessContent.run(Content1MB,RequestMethod.POST);
+        server.stop();
+
+        //
 
         restAPIStore.deleteApplication(applicationID);
     }
