@@ -12,17 +12,13 @@ import java.io.OutputStream;
 public class Handler implements HttpHandler {
     int statusCode;
     String content;
-    Boolean sendContent;
 
-    public Handler(int statusCode, String content, Boolean sendContent){
+    public Handler(int statusCode, String content){
         this.statusCode = statusCode;
         this.content = content;
-        this.sendContent = sendContent;
     }
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        // Prepare the JSON response
-        String content = readFile("/Users/jithmir/Work/IntegrationTests/HTTPCoreScenarioTests/src/main/resources/2KB.json");
         // Set the response headers (matching the ones from the SSL socket server)
         exchange.getResponseHeaders().set("Access-Control-Expose-Headers", "");
         exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
@@ -33,8 +29,9 @@ public class Handler implements HttpHandler {
         exchange.getResponseHeaders().set("Date", "Tue, 14 Dec 2021 08:15:17 GMT");
         exchange.getResponseHeaders().set("Connection", "Close");
 
-        // Send response headers with status code 200 and the length of the JSON response
-        exchange.sendResponseHeaders(200, content.getBytes().length);
+        // Send response headers with status code and the length of the JSON response
+
+        exchange.sendResponseHeaders(statusCode, content.getBytes().length);
 
         // Write the JSON response to the output stream
         OutputStream os = exchange.getResponseBody();

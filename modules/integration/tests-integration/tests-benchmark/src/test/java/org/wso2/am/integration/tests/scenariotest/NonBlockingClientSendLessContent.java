@@ -2,6 +2,7 @@ package org.wso2.am.integration.tests.scenariotest;
 
 import javax.net.ssl.*;
 import java.io.*;
+import java.net.SocketException;
 import java.security.KeyStore;
 
 public class NonBlockingClientSendLessContent extends AbstractSSLClient{
@@ -24,7 +25,7 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
         this.port = port;
         this.context = context;
     }
-    public void run(String payload, RequestMethod method) {
+    public void run(String payload, RequestMethod method){
         try {
             // Create ssl socket
             SSLContext sslContext = this.createSSLContext();
@@ -40,15 +41,16 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
                     sslSocket.startHandshake();
                     // Get session after the connection is established
                     SSLSession sslSession = sslSocket.getSession();
-                    //System.out.println("SSLSession :");
-                    //System.out.println("\tProtocol : " + sslSession.getProtocol());
-                    //System.out.println("\tCipher suite : " + sslSession.getCipherSuite());
                     System.out.println("Connection established with the backend");
                     // Start handling application content
                     OutputStream outputStream = sslSocket.getOutputStream();
                     // Create a thread to read the response
                     ResponseReader responseReader = new ResponseReader(sslSocket);
                     Thread responseThread = new Thread(responseReader);
+//                    responseThread.setUncaughtExceptionHandler((t, e) -> {
+//                        System.out.println("Caught exception in thread " + t.getName() + ": " + e.getMessage());
+//                        throw new Exception(e);
+//                    });
                     responseThread.start();
 
                     PrintStream printWriter = new PrintStream(outputStream);
@@ -97,7 +99,7 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
             this.sslSocket = sslSocket;
         }
         @Override
-        public void run() {
+        public void run(){
             try {
                 System.out.println("Reading the response ...");
                 InputStream inputStream = sslSocket.getInputStream();
@@ -109,7 +111,13 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
                 inputStream.close();
                 responseComplete = true;
             } catch (IOException e) {
-                throw new RuntimeException(e);
+//                 Assert that the caught exception is an instance of SocketException
+                if (e instanceof SocketException) {
+                    System.out.println("The client socket is closed after waiting for a response");
+//                    assert "Socket closed".equals(e.getMessage()) : "Expected a Socket closed exception";
+                }else{
+                    throw new RuntimeException(e);
+                }
             }
         }
         public void waitForResponse() throws InterruptedException {

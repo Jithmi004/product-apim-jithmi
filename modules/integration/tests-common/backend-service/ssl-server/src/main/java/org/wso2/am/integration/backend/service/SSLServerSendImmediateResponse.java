@@ -4,19 +4,15 @@ import com.sun.net.httpserver.HttpsServer;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class SSLServerSendImmediateResponse extends AbstractSSLServer {
 
     public void run(int port, String content, int statusCode) throws InterruptedException {
+        // Create a new thread to run the server
         try {
             // Initialize the SSL context with the keystore
             SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -38,31 +34,7 @@ public class SSLServerSendImmediateResponse extends AbstractSSLServer {
             this.setServer(server);
             server.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext));
 
-            // Wrap the handler logic with a timeout mechanism
-            server.createContext("/", exchange -> {
-                ExecutorService executor = Executors.newSingleThreadExecutor();
-                Future<?> future = executor.submit(() -> {
-                    try {
-                        // Handle the request
-                        new Handler(statusCode, content, true).handle(exchange);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-                executor.shutdown();
-
-                try {
-                    // Wait for completion or timeout after 10 seconds
-                    future.get(10, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
-                    // Handle timeout: return 503 Service Unavailable
-                    exchange.sendResponseHeaders(503, -1);
-                    future.cancel(true);  // Cancel the task
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-
+            server.createContext("/", new Handler(statusCode,content));
             server.setExecutor(Executors.newSingleThreadExecutor());
             server.start();
 

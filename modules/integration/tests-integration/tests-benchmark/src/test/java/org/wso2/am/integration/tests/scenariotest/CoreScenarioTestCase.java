@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertThrows;
 
 @SetEnvironment(executionEnvironments = {ExecutionEnvironment.STANDALONE})
 public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
@@ -161,6 +162,7 @@ public class CoreScenarioTestCase extends APIMIntegrationBaseTest {
         //Client sends less content than mentioned in the content-length header and server sends immediate response without payload
 
         server.run(8100,"", 200);
+        client2kbLessContent.run(Content2KB, RequestMethod.POST);
         client2kbLessContent.run(Content2KB,RequestMethod.POST);
         client1mbLessContent.run(Content1MB,RequestMethod.POST);
         server.stop();
