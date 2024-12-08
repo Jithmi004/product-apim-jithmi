@@ -49,10 +49,6 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
                     // Create a thread to read the response
                     ResponseReader responseReader = new ResponseReader(sslSocket);
                     Thread responseThread = new Thread(responseReader);
-                    //                    responseThread.setUncaughtExceptionHandler((t, e) -> {
-                    //                        System.out.println("Caught exception in thread " + t.getName() + ": " + e.getMessage());
-                    //                        throw new Exception(e);
-                    //                    });
                     responseThread.start();
 
                     PrintStream printWriter = new PrintStream(outputStream);
@@ -85,15 +81,13 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
                     printWriter.print("\r\n");
                     sslSocket.close();
                 } catch (Exception ex) {
-                    System.out.println("Meowwww");
+                    ex.printStackTrace();
                 }
             } catch (Exception ex) {
-                System.out.println("Meowwww");
-//                ex.printStackTrace();
+                ex.printStackTrace();
             }
         } catch (Exception ex) {
-            System.out.println("Meowwww");
-//            ex.printStackTrace();
+            ex.printStackTrace();
         }
     }
     private static class ResponseReader implements Runnable {
@@ -115,18 +109,13 @@ public class NonBlockingClientSendLessContent extends AbstractSSLClient{
                 inputStream.close();
                 responseComplete = true;
             } catch (IOException e) {
-                Assert.assertEquals("Bla Bla", e.getMessage(), "Expected a Bla Bla");
-
                 //Assert that the caught exception is an instance of SocketException
                 if (e instanceof SocketException) {
-                    //System.out.println("The client socket is closed after waiting for a response");
-                    ////assert "Socket closed".equals(e.getMessage()) : "Expected a Socket closed exception";
-//                    throw new RuntimeException("Meow");
-//                    Assert.assertEquals("Socket closed", e.getMessage(), "Expected a Socket closed exception");
-                    System.out.println("hehe");
-                }//else{
-//                    throw new RuntimeException(e);
-//                }
+                    Assert.assertEquals("Socket closed", e.getMessage(), "Expected a Socket closed exception");
+                    System.out.println("Socket closed");
+                }else{
+                    throw new RuntimeException(e);
+                }
             }
         }
         public void waitForResponse() throws InterruptedException {
